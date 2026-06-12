@@ -8,12 +8,16 @@ import type { OrderForm, OptionContract } from './types/options'
 
 export default function App() {
   const [symbol, setSymbol] = useState('SPY')
-  const [rightPanel, setRightPanel] = useState<'chain' | 'order'>('chain')
+  const [selectedContract, setSelectedContract] = useState<{strike: number; expiry: string; type: 'call' | 'put'} | null>(null)
 
   const handleSymbolSelect = useCallback((s: string) => setSymbol(s), [])
-  const handlePlaceOrder = useCallback((order: OrderForm) => console.log('Place order:', order), [])
-  const handleSelectContract = useCallback((c: OptionContract, type: 'call' | 'put', strike: number, expiry: string) => {
-    console.log('Selected:', type, strike, expiry)
+
+  const handlePlaceOrder = useCallback((order: OrderForm) => {
+    console.log('Place order:', order)
+  }, [])
+
+  const handleSelectContract = useCallback((contract: OptionContract, type: 'call' | 'put', strike: number, expiry: string) => {
+    setSelectedContract({ strike, expiry, type })
   }, [])
 
   return (
@@ -31,23 +35,9 @@ export default function App() {
           <div className="w-px h-5 bg-border" />
           <SymbolSearch onSelect={handleSymbolSelect} currentSymbol={symbol} />
         </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex bg-bg-800 rounded-lg border border-border p-0.5 gap-0.5">
-            <button
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${rightPanel === 'chain' ? 'bg-blue text-white shadow-sm shadow-blue-glow' : 'text-text-muted hover:text-text-secondary'}`}
-              onClick={() => setRightPanel('chain')}
-            >期权链</button>
-            <button
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${rightPanel === 'order' ? 'bg-blue text-white shadow-sm shadow-blue-glow' : 'text-text-muted hover:text-text-secondary'}`}
-              onClick={() => setRightPanel('order')}
-            >交易</button>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-text-muted bg-bg-800 px-3 py-1.5 rounded-lg border border-border">
-            <span className="w-1.5 h-1.5 rounded-full bg-green shadow-sm shadow-green-glow" />
-            <span className="hidden sm:inline">模拟交易</span>
-          </div>
+        <div className="flex items-center gap-2 text-xs text-text-muted bg-bg-800 px-3 py-1.5 rounded-lg border border-border">
+          <span className="w-1.5 h-1.5 rounded-full bg-green shadow-sm shadow-green-glow" />
+          <span className="hidden sm:inline">模拟交易</span>
         </div>
       </header>
 
@@ -55,55 +45,40 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* LEFT — Asset list */}
         <aside className="w-56 border-r border-border bg-surface hidden lg:flex flex-col shrink-0">
-          <div className="px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider border-b border-border">
-            市场
-          </div>
+          <div className="px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider border-b border-border">市场</div>
           <AssetSelector onSelect={handleSymbolSelect} currentSymbol={symbol} />
         </aside>
 
-        {/* CENTER — Chart + Options */}
+        {/* CENTER — Chart + Options Chain (primary) */}
         <main className="flex-1 flex flex-col min-w-0 bg-bg-900">
           {/* Chart */}
           <div className="flex-1 min-h-[300px] bg-bg-850">
             <TradingViewChart symbol={symbol} />
           </div>
-
           {/* Split handle */}
           <div className="h-px bg-border relative">
             <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-8 h-2 rounded-full bg-bg-600" />
           </div>
-
           {/* Options Chain */}
           <div className="h-[42%] min-h-[200px]">
             <OptionsChain symbol={symbol} onSelectContract={handleSelectContract} />
           </div>
         </main>
 
-        {/* RIGHT — Order panel or Options chain */}
+        {/* RIGHT — Trading panel only */}
         <aside className="w-[340px] border-l border-border bg-surface shrink-0 flex flex-col">
-          {/* Panel header */}
           <div className="px-4 py-3 border-b border-border flex items-center gap-2 shrink-0">
-            {rightPanel === 'chain' ? (
-              <>
-                <svg className="w-4 h-4 text-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
-                </svg>
-                <span className="text-sm font-semibold text-text-primary">期权链</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 text-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
-                </svg>
-                <span className="text-sm font-semibold text-text-primary">交易</span>
-              </>
+            <svg className="w-4 h-4 text-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            <span className="text-sm font-semibold text-text-primary">交易</span>
+            {selectedContract && (
+              <span className="text-[11px] text-text-muted ml-auto">
+                {symbol} {selectedContract.type === 'call' ? 'Call' : 'Put'} ${selectedContract.strike}
+              </span>
             )}
           </div>
-          {rightPanel === 'order' ? (
-            <OrderPanel symbol={symbol} onPlaceOrder={handlePlaceOrder} />
-          ) : (
-            <OptionsChain symbol={symbol} onSelectContract={handleSelectContract} />
-          )}
+          <OrderPanel symbol={symbol} onPlaceOrder={handlePlaceOrder} selectedContract={selectedContract} />
         </aside>
       </div>
     </div>

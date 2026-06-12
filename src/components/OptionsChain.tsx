@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { OptionsChainData, OptionContract } from '../types/options'
 
 interface Props {
@@ -16,6 +16,10 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
   const [sortAsc, setSortAsc] = useState(true)
   const [showGreeks, setShowGreeks] = useState(false)
   const [hoveredStrike, setHoveredStrike] = useState<number | null>(null)
+  const dataRef = useRef<OptionsChainData | null>(null)
+
+  // Keep ref in sync for smooth updates
+  useEffect(() => { dataRef.current = data }, [data])
 
   const fetchExpirations = useCallback(async (sym: string) => {
     try {
@@ -44,21 +48,38 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
       const json: OptionsChainData = await res.json()
       json.contracts.sort((a, b) => a.strike - b.strike)
       setData(json)
+      setLoading(false)
     } catch (e) {
       setError(`加载失败: ${e instanceof Error ? e.message : String(e)}`)
       setData(null)
-    } finally {
       setLoading(false)
+    }
+  }, [])
+
+  // Smooth refresh: update prices in-place without showing loading spinner
+  const refreshPrices = useCallback(async (sym: string, exp: string) => {
+    if (!sym || !exp) return
+    try {
+      const res = await fetch(`/api/options/${encodeURIComponent(sym)}?expiry=${encodeURIComponent(exp)}`)
+      if (!res.ok) return
+      const json: OptionsChainData = await res.json()
+      json.contracts.sort((a, b) => a.strike - b.strike)
+      // Smooth update — no loading state change
+      setData(json)
+    } catch {
+      // Silent fail on refresh
     }
   }, [])
 
   useEffect(() => { if (symbol) fetchExpirations(symbol) }, [symbol])
   useEffect(() => { if (symbol && expiry) fetchOptions(symbol, expiry) }, [symbol, expiry, fetchOptions])
+
+  // Silent auto-refresh every 15s (no loading flash)
   useEffect(() => {
     if (!symbol || !expiry) return
-    const interval = setInterval(() => fetchOptions(symbol, expiry), 15000)
+    const interval = setInterval(() => refreshPrices(symbol, expiry), 15000)
     return () => clearInterval(interval)
-  }, [symbol, expiry, fetchOptions])
+  }, [symbol, expiry, refreshPrices])
 
   const handleSort = (key: typeof sortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc)
@@ -87,12 +108,18 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-3 py-2 border-b border-border shrink-0 bg-bg-800/50">
-        <span className="text-sm font-bold text-text-primary tracking-wide">{symbol}</span>
+        <span className="text-sm font-bold text-text-primary tracking-wide">{symbol} 期权链</span>
         {data?.underlying_price ? (
-          <span className="text-xs text-text-muted">
+          <span className="text-xs">
             现价 <span className="text-yellow font-mono font-semibold">${data.underlying_price.toFixed(2)}</span>
           </span>
         ) : null}
+        {loading && (
+          <svg className="animate-spin h-3 w-3 text-text-muted" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <select
             value={expiry}
@@ -113,17 +140,11 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
         </div>
       </div>
 
-      {/* Loading / Error */}
-      {loading && (
-        <div className="flex items-center justify-center py-10 text-text-muted text-xs gap-2">
-          <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-          加载期权数据...
-        </div>
-      )}
-      {error && <div className="px-4 py-6 text-red text-xs text-center">{error}</div>}
+      {/* Initial load error */}
+      {error && !data && <div className="px-4 py-6 text-red text-xs text-center">{error}</div>}
 
-      {/* Table */}
-      {data && !loading && (
+      {/* Table — always visible once loaded, refreshes smoothly */}
+      {data && (
         <div className="flex-1 overflow-auto">
           <table className="w-full text-xs">
             <thead className="sticky top-0 z-10 bg-bg-850">

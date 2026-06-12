@@ -5,12 +5,13 @@ import { isAlpacaConfigured } from '../api/config'
 interface Props {
   symbol: string
   onPlaceOrder?: (order: OrderForm) => void
+  selectedContract?: { strike: number; expiry: string; type: 'call' | 'put' } | null
 }
 
 const TABS = ['限价', '市价', '止损'] as const
 const SIZES = [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50]
 
-export default function OrderPanel({ symbol, onPlaceOrder }: Props) {
+export default function OrderPanel({ symbol, onPlaceOrder, selectedContract }: Props) {
   const [tab, setTab] = useState<number>(0)
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [price, setPrice] = useState('')
