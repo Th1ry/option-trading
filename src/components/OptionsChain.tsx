@@ -14,7 +14,7 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
   const [error, setError] = useState('')
   const [hoveredStrike, setHoveredStrike] = useState<number | null>(null)
   const tbodyRef = useRef<HTMLTableSectionElement>(null)
-  const autoCenteredRef = useRef(false)
+  const centeredRef = useRef(false)
 
   const fetchExpirations = useCallback(async (sym: string) => {
     try {
@@ -27,9 +27,9 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
         }
       }
     } catch {
-      const fallback = ['2026-06-19', '2026-07-17', '2026-09-18', '2026-12-18', '2027-01-15']
-      setExpiries(fallback)
-      if (!expiry) setExpiry(fallback[0])
+      const fb = ['2026-06-19', '2026-07-17', '2026-09-18', '2026-12-18', '2027-01-15']
+      setExpiries(fb)
+      if (!expiry) setExpiry(fb[0])
     }
   }, [expiry])
 
@@ -38,114 +38,118 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
     setLoading(true); setError('')
     try {
       const res = await fetch(`/api/options/${encodeURIComponent(sym)}?expiry=${encodeURIComponent(exp)}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) throw new Error('')
       const json: OptionsChainData = await res.json()
       json.contracts.sort((a, b) => a.strike - b.strike)
       setData(json)
-      autoCenteredRef.current = false
-    } catch (e) {
-      setError(`加载失败`); setData(null)
+      centeredRef.current = false
+    } catch {
+      setError('加载失败')
     } finally { setLoading(false) }
   }, [])
 
-  const refreshPrices = useCallback(async (sym: string, exp: string) => {
-    if (!sym || !exp) return
+  const refresh = useCallback(async (sym: string, exp: string) => {
     try {
       const res = await fetch(`/api/options/${encodeURIComponent(sym)}?expiry=${encodeURIComponent(exp)}`)
       if (!res.ok) return
       const json: OptionsChainData = await res.json()
       json.contracts.sort((a, b) => a.strike - b.strike)
       setData(json)
-    } catch { /* silent */ }
+    } catch {}
   }, [])
 
   useEffect(() => { if (symbol) fetchExpirations(symbol) }, [symbol])
   useEffect(() => { if (symbol && expiry) fetchOptions(symbol, expiry) }, [symbol, expiry, fetchOptions])
   useEffect(() => {
     if (!symbol || !expiry) return
-    const interval = setInterval(() => refreshPrices(symbol, expiry), 15000)
-    return () => clearInterval(interval)
-  }, [symbol, expiry, refreshPrices])
+    const int = setInterval(() => refresh(symbol, expiry), 15000)
+    return () => clearInterval(int)
+  }, [symbol, expiry, refresh])
 
-  // Auto-center on ATM strike
+  // Auto-center ATM
   useEffect(() => {
-    if (!data || autoCenteredRef.current || !tbodyRef.current) return
-    const price = data.underlying_price
-    if (!price) return
-    const closest = data.contracts.reduce((best, c) =>
-      Math.abs(c.strike - price) < Math.abs(best.strike - price) ? c : best, data.contracts[0])
+    if (!data || centeredRef.current || !tbodyRef.current) return
+    const p = data.underlying_price
+    if (!p) return
+    const best = data.contracts.reduce((a, b) => Math.abs(a.strike - p) < Math.abs(b.strike - p) ? a : b)
     const rows = tbodyRef.current.querySelectorAll('tr')
     for (let i = 0; i < rows.length; i++) {
-      const cells = rows[i].querySelectorAll('td')
-      if (cells.length >= 3 && Math.abs(parseFloat(cells[2]?.textContent || '0') - closest.strike) < 0.1) {
+      const tds = rows[i].querySelectorAll('td')
+      if (tds.length >= 3 && Math.abs(parseFloat(tds[2]?.textContent || '0') - best.strike) < 0.1) {
         rows[i].scrollIntoView({ block: 'center', behavior: 'smooth' })
-        autoCenteredRef.current = true
+        centeredRef.current = true
         break
       }
     }
   }, [data])
 
-  const fp = (v: number | undefined | null, def = '-') => v != null ? v.toFixed(2) : def
+  const fp = (v: number | undefined | null) => v != null ? v.toFixed(2) : '-'
   const fi = (v: number | undefined | null) => v != null ? (v * 100).toFixed(1) + '%' : '-'
-
   const price = data?.underlying_price ?? 0
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-rh-border shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">{symbol}</span>
-          {price > 0 && <span className="text-sm text-rh-text-secondary font-mono tabular-nums">${price.toFixed(2)}</span>}
-        </div>
-        {loading && <span className="text-[11px] text-rh-text-muted animate-pulse">更新中</span>}
-        <div className="ml-auto flex items-center gap-2">
-          <select value={expiry} onChange={e => setExpiry(e.target.value)}
-            className="text-xs text-rh-text-secondary bg-rh-card border border-rh-border rounded-lg px-2.5 py-1.5 outline-none appearance-none cursor-pointer"
-          >
-            {expiries.map(e => {
-              const d = new Date(e)
-              const label = d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-              return <option key={e} value={e}>{label}</option>
-            })}
-          </select>
-        </div>
+      <div className="flex items-center px-4 py-2.5 border-b border-[#1c1c1e] shrink-0">
+        <span className="text-sm font-semibold">期权</span>
+        <select value={expiry} onChange={e => setExpiry(e.target.value)}
+          className="ml-3 text-xs text-[#98989d] bg-[#1c1c1e] border border-[#2c2c2e] rounded-lg px-2.5 py-1 outline-none appearance-none cursor-pointer"
+        >
+          {expiries.map(e => (
+            <option key={e} value={e}>{new Date(e).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}</option>
+          ))}
+        </select>
+        {loading && <span className="ml-2 text-xs text-[#636366] animate-pulse">更新</span>}
+        <span className="ml-auto text-xs text-[#636366]">15秒自动刷新</span>
       </div>
 
-      {error && !data && <div className="p-6 text-xs text-rh-text-muted text-center">{error}</div>}
+      {error && !data && <div className="p-6 text-xs text-[#636366] text-center">{error}</div>}
 
       {data && (
         <div className="flex-1 overflow-auto">
           <table className="w-full">
-            <thead className="sticky top-0 z-10 bg-rh-bg">
-              <tr className="border-b border-rh-border/50">
-                <th colSpan={2} className="px-3 py-2 text-[11px] font-semibold text-rh-red/80 text-left tracking-wide">PUT</th>
-                <th className="px-1 py-2 text-[11px] text-rh-text-muted font-mono text-center">行权价</th>
-                <th colSpan={2} className="px-3 py-2 text-[11px] font-semibold text-rh-green/80 text-right tracking-wide">CALL</th>
+            <thead className="sticky top-0 z-10 bg-black">
+              <tr className="border-b border-[#1c1c1e]/50">
+                <th className="w-[22%] px-3 py-2 text-[11px] font-semibold text-[#ff453a]/80 text-left">PUT</th>
+                <th className="w-[12%] px-1 py-2 text-[11px] text-[#636366] text-center">行权价</th>
+                <th className="w-[22%] px-3 py-2 text-[11px] font-semibold text-[#30d158]/80 text-right">CALL</th>
+                <th className="w-[22%] px-3 py-1 text-[10px] text-[#636366] font-mono text-right tabular-nums">IV</th>
+                <th className="w-[22%] px-3 py-1 text-[10px] text-[#636366] font-mono text-left tabular-nums">成交量</th>
               </tr>
             </thead>
             <tbody ref={tbodyRef}>
               {(data?.contracts || []).map((c, i) => {
                 const d = price > 0 ? Math.abs(c.strike - price) : 999
                 const isATM = d < 0.5
-                const isITM = price > 0 ? (c.strike < price ? 'call' : c.strike > price ? 'put' : '') : ''
-                const isHover = hoveredStrike === c.strike
+                const itm = price > 0 ? (c.strike < price ? 'call' : c.strike > price ? 'put' : '') : ''
+                const h = hoveredStrike === c.strike
                 return (
                   <tr key={c.strike}
                     onClick={() => onSelectContract?.(c, 'call', c.strike, expiry)}
                     onMouseEnter={() => setHoveredStrike(c.strike)}
                     onMouseLeave={() => setHoveredStrike(null)}
-                    className={`border-b border-rh-border/15 cursor-pointer transition-colors
-                      ${isHover ? 'bg-rh-card-hover' : isATM ? 'bg-rh-card/40' : ''}`}
+                    className={`border-b border-[#1c1c1e]/10 cursor-pointer transition-colors text-xs
+                      ${h ? 'bg-[#252527]' : isATM ? 'bg-[#1c1c1e]/30' : ''}`}
                   >
-                    <td className={`px-3 py-2 text-xs font-mono tabular-nums text-right ${c.put_last ? 'text-rh-red' : 'text-rh-text-muted'}`}>{fp(c.put_last, '-')}</td>
-                    <td className={`px-2 py-2 text-[11px] font-mono tabular-nums text-right ${c.put_iv ? 'text-rh-text-muted' : 'text-rh-text-muted'}`}>{fi(c.put_iv)}</td>
-                    <td className={`px-1 py-2 text-xs font-bold font-mono text-center
-                      ${isATM ? 'text-rh-green' : isITM === 'call' ? 'text-rh-green/70' : isITM === 'put' ? 'text-rh-red/70' : 'text-rh-text-secondary'}`}>
+                    {/* PUT last price */}
+                    <td className={`px-3 py-2 font-mono text-right tabular-nums ${c.put_last ? 'text-[#ff453a]' : 'text-[#636366]'}`}>
+                      {fp(c.put_last)}
+                    </td>
+                    {/* Strike - centered */}
+                    <td className={`px-1 py-2 font-bold font-mono text-center tabular-nums
+                      ${isATM ? 'text-[#30d158]' : itm === 'call' ? 'text-[#30d158]/70' : itm === 'put' ? 'text-[#ff453a]/70' : 'text-[#98989d]'}`}>
                       {c.strike.toFixed(1)}
                     </td>
-                    <td className={`px-2 py-2 text-[11px] font-mono tabular-nums text-left ${c.call_iv ? 'text-rh-text-muted' : 'text-rh-text-muted'}`}>{fi(c.call_iv)}</td>
-                    <td className={`px-3 py-2 text-xs font-mono tabular-nums text-left ${c.call_last ? 'text-rh-green' : 'text-rh-text-muted'}`}>{fp(c.call_last, '-')}</td>
+                    {/* CALL last price */}
+                    <td className={`px-3 py-2 font-mono text-left tabular-nums ${c.call_last ? 'text-[#30d158]' : 'text-[#636366]'}`}>
+                      {fp(c.call_last)}
+                    </td>
+                    {/* IV */}
+                    <td className="px-3 py-2 font-mono text-right tabular-nums text-[#636366]">{fi(c.call_iv)}</td>
+                    {/* Volume */}
+                    <td className={`px-3 py-2 font-mono text-left tabular-nums ${c.call_volume ? 'text-[#636366]' : 'text-[#636366]'}`}>
+                      {c.call_volume ?? '-'}
+                    </td>
                   </tr>
                 )
               })}

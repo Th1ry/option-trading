@@ -10,22 +10,18 @@ interface Props {
 
 export default function OrderPanel({ symbol, onPlaceOrder, selectedContract }: Props) {
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
-  const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
+  const [type, setType] = useState<'market' | 'limit'>('market')
   const [price, setPrice] = useState('')
   const [amount, setAmount] = useState('')
 
   useEffect(() => {
-    if (selectedContract?.strike) {
-      setPrice(String(selectedContract.strike))
-      setOrderType('limit')
-    }
+    if (selectedContract?.strike) { setPrice(String(selectedContract.strike)); setType('limit') }
   }, [selectedContract])
 
-  const handleSubmit = () => {
-    if (!symbol) return
+  const submit = () => {
     onPlaceOrder?.({
-      side, type: orderType,
-      quantity: parseInt(amount) || 0,
+      side, type,
+      quantity: parseInt(amount) || 1,
       price: parseFloat(price) || 0,
       stopPrice: 0, timeInForce: 'day',
     })
@@ -34,69 +30,67 @@ export default function OrderPanel({ symbol, onPlaceOrder, selectedContract }: P
   return (
     <div className="flex flex-col h-full p-4 gap-3">
       {/* Buy/Sell */}
-      <div className="flex rounded-xl overflow-hidden border border-rh-border">
+      <div className="flex rounded-xl overflow-hidden border border-[#2c2c2e]">
         <button className={`flex-1 py-2.5 text-sm font-semibold transition-colors
-          ${side === 'buy' ? 'bg-rh-green text-black' : 'bg-rh-card text-rh-text-secondary hover:text-rh-text'}`}
+          ${side === 'buy' ? 'bg-[#30d158] text-black' : 'bg-[#1c1c1e] text-[#98989d] hover:text-white'}`}
           onClick={() => setSide('buy')}>买入</button>
         <button className={`flex-1 py-2.5 text-sm font-semibold transition-colors
-          ${side === 'sell' ? 'bg-rh-red text-black' : 'bg-rh-card text-rh-text-secondary hover:text-rh-text'}`}
+          ${side === 'sell' ? 'bg-[#ff453a] text-black' : 'bg-[#1c1c1e] text-[#98989d] hover:text-white'}`}
           onClick={() => setSide('sell')}>卖出</button>
       </div>
 
-      {/* Order type */}
-      <div className="flex border-b border-rh-border gap-4">
+      {/* Type */}
+      <div className="flex gap-3 border-b border-[#1c1c1e]">
         {(['market', 'limit'] as const).map(t => (
           <button key={t}
             className={`pb-2 text-sm font-medium border-b-2 transition-colors
-              ${orderType === t ? 'border-rh-green text-rh-text' : 'border-transparent text-rh-text-muted hover:text-rh-text-secondary'}`}
-            onClick={() => setOrderType(t)}>
-            {t === 'market' ? '市价' : '限价'}
-          </button>
+              ${type === t ? 'border-[#30d158] text-white' : 'border-transparent text-[#636366] hover:text-[#98989d]'}`}
+            onClick={() => setType(t)}>{t === 'market' ? '市价' : '限价'}</button>
         ))}
       </div>
 
       {/* Price */}
-      {orderType === 'limit' && (
-        <div className="bg-rh-card rounded-xl px-4 py-2.5 border border-rh-border">
-          <div className="text-[11px] text-rh-text-muted mb-1">价格</div>
+      {type === 'limit' && (
+        <div className="bg-[#1c1c1e] rounded-xl px-4 py-2.5 border border-[#2c2c2e]">
+          <div className="text-[11px] text-[#636366] mb-1">价格</div>
           <div className="flex items-center">
-            <span className="text-rh-text-muted text-sm mr-1">$</span>
+            <span className="text-[#636366] text-sm mr-1">$</span>
             <input type="number" step="0.01" placeholder="0.00"
               value={price} onChange={e => setPrice(e.target.value)}
-              className="bg-transparent text-rh-text text-sm w-full outline-none font-mono tabular-nums" />
+              className="bg-transparent text-white text-sm w-full outline-none font-mono tabular-nums" />
           </div>
         </div>
       )}
 
-      {/* Quantity */}
-      <div className="bg-rh-card rounded-xl px-4 py-2.5 border border-rh-border">
-        <div className="text-[11px] text-rh-text-muted mb-1">数量</div>
-        <input type="number" step="1" placeholder="0"
+      {/* Qty */}
+      <div className="bg-[#1c1c1e] rounded-xl px-4 py-2.5 border border-[#2c2c2e]">
+        <div className="text-[11px] text-[#636366] mb-1">数量</div>
+        <input type="number" step="1" placeholder="1"
           value={amount} onChange={e => setAmount(e.target.value)}
-          className="bg-transparent text-rh-text text-sm w-full outline-none font-mono tabular-nums" />
+          className="bg-transparent text-white text-sm w-full outline-none font-mono tabular-nums" />
       </div>
 
-      {/* Quick amounts */}
+      {/* Quick qty */}
       <div className="flex gap-1.5">
         {[1, 10, 50, 100].map(n => (
           <button key={n} onClick={() => setAmount(String(n))}
-            className="flex-1 py-2 text-xs font-medium text-rh-text-secondary bg-rh-card rounded-lg border border-rh-border hover:border-rh-text-muted transition-colors"
+            className="flex-1 py-2 text-xs font-medium text-[#98989d] bg-[#1c1c1e] rounded-lg border border-[#2c2c2e] hover:border-[#636366] transition-colors"
           >{n}</button>
         ))}
       </div>
 
       {/* Submit */}
       {!isAlpacaConfigured() && (
-        <div className="text-xs text-rh-text-muted text-center py-2 leading-relaxed bg-rh-card rounded-xl border border-rh-border">
-          配置 Alpaca Key 后激活交易
+        <div className="text-xs text-[#636366] text-center py-2 leading-relaxed bg-[#1c1c1e] rounded-xl border border-[#2c2c2e]">
+          配置 Alpaca Key 后激活
         </div>
       )}
-      <button onClick={handleSubmit}
-        disabled={!symbol || !amount || (orderType !== 'market' && !price)}
+      <button onClick={submit}
+        disabled={!symbol || !amount || (type !== 'market' && !price)}
         className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98]
           ${side === 'buy'
-            ? 'bg-rh-green text-black hover:brightness-110 disabled:brightness-50'
-            : 'bg-rh-red text-black hover:brightness-110 disabled:brightness-50'}
+            ? 'bg-[#30d158] text-black hover:brightness-110 disabled:opacity-40'
+            : 'bg-[#ff453a] text-black hover:brightness-110 disabled:opacity-40'}
           disabled:cursor-not-allowed disabled:active:scale-100`}
       >
         {side === 'buy' ? '买入' : '卖出'} {symbol}

@@ -1,56 +1,23 @@
 @import "tailwindcss";
 
-/* Dark Robinhood-inspired theme */
-@theme {
-  --color-rh-bg: #000000;
-  --color-rh-bg-alt: #0a0a0b;
-  --color-rh-card: #1c1c1e;
-  --color-rh-card-hover: #252527;
-  --color-rh-border: #2c2c2e;
-  --color-rh-border-light: #38383a;
-  --color-rh-text: #ffffff;
-  --color-rh-text-secondary: #98989d;
-  --color-rh-text-muted: #636366;
-  --color-rh-green: #30d158;
-  --color-rh-green-bg: rgba(48, 209, 88, 0.1);
-  --color-rh-red: #ff453a;
-  --color-rh-red-bg: rgba(255, 69, 58, 0.1);
-  --color-rh-blue: #0a84ff;
-  --color-rh-blue-bg: rgba(10, 132, 255, 0.1);
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
-  background-color: var(--color-rh-bg);
-  color: var(--color-rh-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: #000;
+  color: #fff;
   overflow: hidden;
   height: 100vh;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-#root {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+#root { height: 100vh; display: flex; flex-direction: column; }
 
 ::-webkit-scrollbar { width: 0; height: 0; }
 
 input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="number"] { -moz-appearance: textfield; }
+input:focus { outline: none; }
 
-::selection {
-  background: var(--color-rh-blue-bg);
-  color: var(--color-rh-blue);
-}
+::selection { background: rgba(48, 209, 88, 0.2); color: #30d158; }
