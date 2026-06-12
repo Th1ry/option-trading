@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { OptionsChainData, OptionContract } from '../types/options'
 
 interface Props {
@@ -12,14 +12,11 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
   const [expiries, setExpiries] = useState<string[]>([])
   const [expiry, setExpiry] = useState('')
   const [error, setError] = useState('')
-  const [sortKey, setSortKey] = useState<'strike' | 'call_iv' | 'put_iv' | 'call_volume' | 'put_volume'>('strike')
-  const [sortAsc, setSortAsc] = useState(true)
   const [showGreeks, setShowGreeks] = useState(false)
   const [hoveredStrike, setHoveredStrike] = useState<number | null>(null)
-  const dataRef = useRef<OptionsChainData | null>(null)
-
-  // Keep ref in sync for smooth updates
-  useEffect(() => { dataRef.current = data }, [data])
+  const tbodyRef = useRef<HTMLTableSectionElement>(null)
+  const prevDataRef = useRef<OptionsChainData | null>(null)
+  const autoCenteredRef = useRef(false)
 
   const fetchExpirations = useCallback(async (sym: string) => {
     try {
@@ -48,6 +45,7 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
       const json: OptionsChainData = await res.json()
       json.contracts.sort((a, b) => a.strike - b.strike)
       setData(json)
+      autoCenteredRef.current = false
       setLoading(false)
     } catch (e) {
       setError(`加载失败: ${e instanceof Error ? e.message : String(e)}`)
@@ -56,7 +54,7 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
     }
   }, [])
 
-  // Smooth refresh: update prices in-place without showing loading spinner
+  // Silent refresh
   const refreshPrices = useCallback(async (sym: string, exp: string) => {
     if (!sym || !exp) return
     try {
@@ -64,32 +62,43 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
       if (!res.ok) return
       const json: OptionsChainData = await res.json()
       json.contracts.sort((a, b) => a.strike - b.strike)
-      // Smooth update — no loading state change
       setData(json)
-    } catch {
-      // Silent fail on refresh
-    }
+    } catch { /* silent */ }
   }, [])
 
   useEffect(() => { if (symbol) fetchExpirations(symbol) }, [symbol])
   useEffect(() => { if (symbol && expiry) fetchOptions(symbol, expiry) }, [symbol, expiry, fetchOptions])
 
-  // Silent auto-refresh every 15s (no loading flash)
+  // Auto-refresh every 15s
   useEffect(() => {
     if (!symbol || !expiry) return
     const interval = setInterval(() => refreshPrices(symbol, expiry), 15000)
     return () => clearInterval(interval)
   }, [symbol, expiry, refreshPrices])
 
-  const handleSort = (key: typeof sortKey) => {
-    if (sortKey === key) setSortAsc(!sortAsc)
-    else { setSortKey(key); setSortAsc(true) }
-  }
+  // Auto-center on ATM strike when data first loads
+  useEffect(() => {
+    if (!data || autoCenteredRef.current || !tbodyRef.current) return
+    const price = data.underlying_price
+    if (!price) return
 
-  const sortedContracts = data?.contracts ? [...data.contracts].sort((a, b) => {
-    const aVal = a[sortKey] ?? 0; const bVal = b[sortKey] ?? 0
-    return sortAsc ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number)
-  }) : []
+    // Find ATM strike
+    const closest = data.contracts.reduce((best, c) =>
+      Math.abs(c.strike - price) < Math.abs(best.strike - price) ? c : best
+    , data.contracts[0])
+
+    const rows = tbodyRef.current.querySelectorAll('tr')
+    for (let i = 0; i < rows.length; i++) {
+      const strikeCell = rows[i].querySelector('td:nth-child(6)')  // Strike column
+      if (strikeCell && Math.abs(parseFloat(strikeCell.textContent || '0') - closest.strike) < 0.1) {
+        rows[i].scrollIntoView({ block: 'center', behavior: 'smooth' })
+        autoCenteredRef.current = true
+        break
+      }
+    }
+  }, [data])
+
+  const sortedContracts = data?.contracts ? [...data.contracts] : []
 
   const fp = (v: number | undefined | null) => v != null ? v.toFixed(2) : '-'
   const fv = (v: number | undefined | null) => v != null ? v.toLocaleString() : '-'
@@ -98,126 +107,95 @@ export default function OptionsChain({ symbol, onSelectContract }: Props) {
 
   const price = data?.underlying_price ?? 0
 
-  const SortHeader = ({ label, k }: { label: string; k: typeof sortKey }) => (
-    <th className="px-1.5 py-1.5 text-[10px] font-medium text-text-muted cursor-pointer select-none hover:text-text-secondary whitespace-nowrap uppercase tracking-wider" onClick={() => handleSort(k)}>
-      {label} {sortKey === k ? <span className="text-blue ml-0.5">{sortAsc ? '▲' : '▼'}</span> : ''}
-    </th>
-  )
-
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex items-center gap-3 px-3 py-2 border-b border-border shrink-0 bg-bg-800/50">
-        <span className="text-sm font-bold text-text-primary tracking-wide">{symbol} 期权链</span>
-        {data?.underlying_price ? (
-          <span className="text-xs">
-            现价 <span className="text-yellow font-mono font-semibold">${data.underlying_price.toFixed(2)}</span>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-5 py-3 border-b border-rh-border shrink-0">
+        <span className="text-sm font-bold text-rh-text">{symbol} 期权</span>
+        {price > 0 && (
+          <span className="text-sm text-rh-text-secondary">
+            ${price.toFixed(2)}
           </span>
-        ) : null}
+        )}
         {loading && (
-          <svg className="animate-spin h-3 w-3 text-text-muted" viewBox="0 0 24 24">
+          <svg className="animate-spin h-3 w-3 text-rh-text-muted" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
           </svg>
         )}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-3">
           <select
             value={expiry}
             onChange={e => setExpiry(e.target.value)}
-            className="bg-bg-700 text-text-secondary text-[11px] px-2 py-1 rounded-md border border-border outline-none cursor-pointer hover:border-text-muted"
+            className="text-xs text-rh-text-secondary bg-rh-bg-alt border border-rh-border rounded-lg px-3 py-1.5 outline-none cursor-pointer hover:border-rh-text-muted appearance-none"
           >
             {expiries.map(e => {
               const d = new Date(e)
-              const label = d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', year: 'numeric' })
-              return <option key={e} value={e}>{label}</option>
+              const today = new Date()
+              const days = Math.round((d.getTime() - today.getTime()) / 86400000)
+              const label = days <= 1 ? '本周' : days <= 7 ? '本周' :
+                d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+              return <option key={e} value={e}>{label} ({e})</option>
             })}
           </select>
-          <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer select-none">
+          <label className="flex items-center gap-1.5 text-xs text-rh-text-muted cursor-pointer select-none">
             <input type="checkbox" checked={showGreeks} onChange={e => setShowGreeks(e.target.checked)}
-              className="w-3 h-3 accent-blue rounded cursor-pointer" />
+              className="w-3.5 h-3.5 accent-rh-green rounded cursor-pointer" />
             Greeks
           </label>
         </div>
       </div>
 
-      {/* Initial load error */}
-      {error && !data && <div className="px-4 py-6 text-red text-xs text-center">{error}</div>}
+      {error && !data && <div className="px-5 py-8 text-rh-red text-xs text-center">{error}</div>}
 
-      {/* Table — always visible once loaded, refreshes smoothly */}
       {data && (
         <div className="flex-1 overflow-auto">
           <table className="w-full text-xs">
-            <thead className="sticky top-0 z-10 bg-bg-850">
-              <tr className="border-b border-border/60">
-                <th colSpan={showGreeks ? 6 : 5} className="px-2 py-1.5 text-[11px] font-bold text-red/90 uppercase tracking-wider text-left">看跌</th>
-                <th className="px-2 py-1.5 text-[11px] text-text-muted font-mono text-center">行权价</th>
-                <th colSpan={showGreeks ? 6 : 5} className="px-2 py-1.5 text-[11px] font-bold text-green/90 uppercase tracking-wider text-right">看涨</th>
+            <thead className="sticky top-0 z-10 bg-rh-bg">
+              <tr className="border-b border-rh-border/60">
+                <th className="px-3 py-2 text-[11px] font-semibold text-rh-red/70 text-left">看跌</th>
+                <th className="px-3 py-2 text-[11px] font-semibold text-rh-green/70 text-right" colSpan={4}>看涨</th>
               </tr>
-              <tr className="border-b border-border/40">
-                <SortHeader label="最新" k="put_iv" />
-                <SortHeader label="买价" k="put_iv" />
-                <SortHeader label="卖价" k="put_iv" />
-                <SortHeader label="成交量" k="put_volume" />
-                <SortHeader label="IV" k="put_iv" />
-                {showGreeks && <><SortHeader label="Δ" k="put_iv" /><SortHeader label="Γ" k="put_iv" /><SortHeader label="Θ" k="put_iv" /></>}
-                <th className="w-[68px]"></th>
-                {showGreeks && <><SortHeader label="Θ" k="call_iv" /><SortHeader label="Γ" k="call_iv" /><SortHeader label="Δ" k="call_iv" /></>}
-                <SortHeader label="IV" k="call_iv" />
-                <SortHeader label="成交量" k="call_volume" />
-                <SortHeader label="卖价" k="call_iv" />
-                <SortHeader label="买价" k="call_iv" />
-                <SortHeader label="最新" k="call_iv" />
+              <tr className="border-b border-rh-border/30">
+                <th className="px-2 py-1.5 text-[10px] font-medium text-rh-text-muted text-right">最新</th>
+                <th className="px-2 py-1.5 text-[10px] font-medium text-rh-text-muted text-center w-16">行权价</th>
+                <th className="px-2 py-1.5 text-[10px] font-medium text-rh-text-muted text-left">最新</th>
+                <th className="px-2 py-1.5 text-[10px] font-medium text-rh-text-muted text-left">涨跌幅</th>
+                <th className="px-2 py-1.5 text-[10px] font-medium text-rh-text-muted text-left">IV</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={tbodyRef}>
               {sortedContracts.map((c, i) => {
-                const itm = price > 0 ? (c.strike < price ? 'call' : c.strike > price ? 'put' : '') : ''
-                const isHover = hoveredStrike === c.strike
+                const isATM = price > 0 && Math.abs(c.strike - price) < 0.5
+                const isITM = price > 0 ? (c.strike < price ? 'call' : c.strike > price ? 'put' : '') : ''
                 return (
                   <tr key={`${c.strike}`}
-                    className={`border-b border-border/20 cursor-pointer transition-all duration-75
-                      ${isHover ? 'bg-blue-bg/20 ring-1 ring-inset ring-blue-glow/30' : i % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]'}
-                      hover:bg-bg-700/30`}
+                    className={`border-b border-rh-border/15 cursor-pointer transition-all duration-75
+                      ${hoveredStrike === c.strike ? 'bg-rh-blue-bg' : isATM ? 'bg-rh-green-bg/30' : i % 2 === 0 ? 'bg-white' : 'bg-rh-bg-alt/30'}
+                      hover:bg-rh-blue-bg/40`}
                     onMouseEnter={() => setHoveredStrike(c.strike)}
                     onMouseLeave={() => setHoveredStrike(null)}
                     onClick={() => onSelectContract?.(c, 'call', c.strike, expiry)}
                   >
-                    {/* PUT */}
-                    <td className={`px-1.5 py-1 font-mono text-right text-[11px] ${c.put_last ? 'text-red' : 'text-text-muted'}`}>{fp(c.put_last)}</td>
-                    <td className={`px-1.5 py-1 font-mono text-right text-[11px] ${c.put_bid ? 'text-text-primary' : 'text-text-muted'}`}>{fp(c.put_bid)}</td>
-                    <td className={`px-1.5 py-1 font-mono text-right text-[11px] ${c.put_ask ? 'text-text-primary' : 'text-text-muted'}`}>{fp(c.put_ask)}</td>
-                    <td className="px-1.5 py-1 font-mono text-right text-[11px] text-text-muted">{fv(c.put_volume)}</td>
-                    <td className={`px-1.5 py-1 font-mono text-right text-[11px] ${c.put_iv ? 'text-yellow/80' : 'text-text-muted'}`}>{fi(c.put_iv)}</td>
-                    {showGreeks && <>
-                      <td className="px-1.5 py-1 font-mono text-right text-[11px] text-text-muted">{fg(c.put_delta)}</td>
-                      <td className="px-1.5 py-1 font-mono text-right text-[11px] text-text-muted">{fg(c.put_gamma)}</td>
-                      <td className="px-1.5 py-1 font-mono text-right text-[11px] text-text-muted">{fg(c.put_theta)}</td>
-                    </>}
-                    {/* Strike */}
-                    <td className={`px-1.5 py-1 font-mono text-center font-bold text-[12px]
-                      ${itm === 'call' ? 'text-green' : itm === 'put' ? 'text-red' : 'text-text-secondary'}`}>
-                      {c.strike.toFixed(1)}
-                      <div className="h-[2px] rounded-full mt-0.5 mx-auto" style={{
-                        width: '80%',
-                        background: price > 0 ? `linear-gradient(to right,
-                          transparent ${Math.max(0, 50 - (price - c.strike) * 1.8)}%,
-                          #0ecb81 ${Math.max(0, 50 - (price - c.strike) * 1.8)}%,
-                          #f6465d ${Math.min(100, 50 + (c.strike - price) * 1.8)}%,
-                          transparent ${Math.min(100, 50 + (c.strike - price) * 1.8)}%)` : 'transparent',
-                        opacity: 0.35
-                      }} />
+                    {/* Put last price */}
+                    <td className={`px-2 py-1.5 font-mono text-right text-[11px] ${c.put_last ? 'text-rh-red' : 'text-rh-text-muted'}`}>
+                      {fp(c.put_last)}
                     </td>
-                    {/* CALL */}
-                    {showGreeks && <>
-                      <td className="px-1.5 py-1 font-mono text-left text-[11px] text-text-muted">{fg(c.call_theta)}</td>
-                      <td className="px-1.5 py-1 font-mono text-left text-[11px] text-text-muted">{fg(c.call_gamma)}</td>
-                      <td className="px-1.5 py-1 font-mono text-left text-[11px] text-text-muted">{fg(c.call_delta)}</td>
-                    </>}
-                    <td className={`px-1.5 py-1 font-mono text-left text-[11px] ${c.call_iv ? 'text-yellow/80' : 'text-text-muted'}`}>{fi(c.call_iv)}</td>
-                    <td className="px-1.5 py-1 font-mono text-left text-[11px] text-text-muted">{fv(c.call_volume)}</td>
-                    <td className={`px-1.5 py-1 font-mono text-left text-[11px] ${c.call_ask ? 'text-text-primary' : 'text-text-muted'}`}>{fp(c.call_ask)}</td>
-                    <td className={`px-1.5 py-1 font-mono text-left text-[11px] ${c.call_bid ? 'text-text-primary' : 'text-text-muted'}`}>{fp(c.call_bid)}</td>
-                    <td className={`px-1.5 py-1 font-mono text-left text-[11px] ${c.call_last ? 'text-green' : 'text-text-muted'}`}>{fp(c.call_last)}</td>
+                    {/* Strike price — centered, bold */}
+                    <td className={`px-2 py-1.5 font-mono text-center text-[12px] font-bold
+                      ${isATM ? 'text-rh-green bg-rh-green-bg/50 rounded-lg' : isITM === 'call' ? 'text-rh-green' : isITM === 'put' ? 'text-rh-red' : 'text-rh-text'}`}>
+                      {c.strike.toFixed(1)}
+                    </td>
+                    {/* Call last price */}
+                    <td className={`px-2 py-1.5 font-mono text-left text-[11px] ${c.call_last ? 'text-rh-green' : 'text-rh-text-muted'}`}>
+                      {fp(c.call_last)}
+                    </td>
+                    {/* Change */}
+                    <td className="px-2 py-1.5 text-left text-[11px] font-medium">—</td>
+                    {/* IV */}
+                    <td className={`px-2 py-1.5 font-mono text-left text-[11px] ${c.call_iv ? 'text-rh-text-secondary' : 'text-rh-text-muted'}`}>
+                      {fi(c.call_iv)}
+                    </td>
                   </tr>
                 )
               })}

@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react'
 import SymbolSearch from './components/SymbolSearch'
-import AssetSelector from './components/AssetSelector'
 import TradingViewChart from './components/TradingViewChart'
 import OptionsChain from './components/OptionsChain'
 import OrderPanel from './components/OrderPanel'
@@ -11,74 +10,99 @@ export default function App() {
   const [selectedContract, setSelectedContract] = useState<{strike: number; expiry: string; type: 'call' | 'put'} | null>(null)
 
   const handleSymbolSelect = useCallback((s: string) => setSymbol(s), [])
-
-  const handlePlaceOrder = useCallback((order: OrderForm) => {
-    console.log('Place order:', order)
-  }, [])
-
-  const handleSelectContract = useCallback((contract: OptionContract, type: 'call' | 'put', strike: number, expiry: string) => {
+  const handlePlaceOrder = useCallback((order: OrderForm) => console.log('Place order:', order), [])
+  const handleSelectContract = useCallback((c: OptionContract, type: 'call' | 'put', strike: number, expiry: string) => {
     setSelectedContract({ strike, expiry, type })
   }, [])
 
   return (
-    <div className="h-screen flex flex-col bg-bg-950 text-text-primary select-none">
+    <div className="h-screen flex flex-col bg-rh-bg-alt text-rh-text">
       {/* ============ TOP BAR ============ */}
-      <header className="h-12 flex items-center justify-between px-4 border-b border-border bg-bg-900 shrink-0">
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-2.5">
-            <svg className="w-5 h-5 text-yellow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-              <polyline points="16 7 22 7 22 13" />
+      <header className="h-14 flex items-center justify-between px-6 border-b border-rh-border bg-rh-bg shrink-0">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-1.5">
+            <svg className="w-6 h-6 text-rh-green" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="none"/>
             </svg>
-            <span className="font-bold text-sm tracking-wider text-text-primary">ALPACA<span className="text-yellow font-black">TRADE</span></span>
+            <span className="text-lg font-bold tracking-tight text-rh-text">Alpaca</span>
           </div>
-          <div className="w-px h-5 bg-border" />
           <SymbolSearch onSelect={handleSymbolSelect} currentSymbol={symbol} />
         </div>
-        <div className="flex items-center gap-2 text-xs text-text-muted bg-bg-800 px-3 py-1.5 rounded-lg border border-border">
-          <span className="w-1.5 h-1.5 rounded-full bg-green shadow-sm shadow-green-glow" />
-          <span className="hidden sm:inline">模拟交易</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-rh-text-secondary">模拟交易</span>
+          <span className="w-2 h-2 rounded-full bg-rh-green" />
         </div>
       </header>
 
-      {/* ============ MAIN CONTENT ============ */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* LEFT — Asset list */}
-        <aside className="w-56 border-r border-border bg-surface hidden lg:flex flex-col shrink-0">
-          <div className="px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider border-b border-border">市场</div>
-          <AssetSelector onSelect={handleSymbolSelect} currentSymbol={symbol} />
+      {/* ============ MAIN ============ */}
+      <div className="flex flex-1 overflow-hidden gap-0">
+        {/* LEFT - Watchlist sidebar */}
+        <aside className="w-60 border-r border-rh-border bg-rh-bg hidden lg:flex flex-col shrink-0">
+          <div className="px-5 py-4 border-b border-rh-border">
+            <h2 className="text-xs font-semibold text-rh-text-secondary uppercase tracking-wider">关注列表</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+            {[
+              { s: 'SPY', p: '742.60', ch: '+0.82%' },
+              { s: 'QQQ', p: '723.62', ch: '+1.14%' },
+              { s: 'AAPL', p: '198.50', ch: '-0.31%' },
+              { s: 'TSLA', p: '342.15', ch: '+2.45%' },
+              { s: 'NVDA', p: '895.30', ch: '+3.12%' },
+              { s: 'AMD', p: '156.80', ch: '-0.55%' },
+              { s: 'IWM', p: '218.40', ch: '+0.44%' },
+            ].map(({ s, p, ch }) => {
+              const up = ch.startsWith('+')
+              return (
+                <button key={s}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all
+                    ${s === symbol ? 'bg-rh-green-bg text-rh-green font-semibold' : 'hover:bg-rh-bg-alt text-rh-text'}`}
+                  onClick={() => handleSymbolSelect(s)}
+                >
+                  <span className="font-semibold">{s}</span>
+                  <div className="text-right">
+                    <div className="font-mono text-sm">${p}</div>
+                    <div className={`text-xs font-medium ${up ? 'text-rh-green' : 'text-rh-red'}`}>{ch}</div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </aside>
 
-        {/* CENTER — Chart + Options Chain (primary) */}
-        <main className="flex-1 flex flex-col min-w-0 bg-bg-900">
-          {/* Chart */}
-          <div className="flex-1 min-h-[300px] bg-bg-850">
-            <TradingViewChart symbol={symbol} />
+        {/* CENTER - Chart + Options */}
+        <main className="flex-1 flex flex-col min-w-0 gap-0 p-3">
+          {/* Chart card */}
+          <div className="flex-1 min-h-[300px] bg-rh-bg rounded-2xl card overflow-hidden">
+            <div className="h-full">
+              <TradingViewChart symbol={symbol} />
+            </div>
           </div>
-          {/* Split handle */}
-          <div className="h-px bg-border relative">
-            <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-8 h-2 rounded-full bg-bg-600" />
-          </div>
-          {/* Options Chain */}
-          <div className="h-[42%] min-h-[200px]">
+
+          {/* Spacing */}
+          <div className="h-3 shrink-0" />
+
+          {/* Options chain card */}
+          <div className="h-[40%] min-h-[220px] bg-rh-bg rounded-2xl card overflow-hidden">
             <OptionsChain symbol={symbol} onSelectContract={handleSelectContract} />
           </div>
         </main>
 
-        {/* RIGHT — Trading panel only */}
-        <aside className="w-[340px] border-l border-border bg-surface shrink-0 flex flex-col">
-          <div className="px-4 py-3 border-b border-border flex items-center gap-2 shrink-0">
-            <svg className="w-4 h-4 text-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+        {/* RIGHT - Trading panel */}
+        <aside className="w-[340px] bg-rh-bg border-l border-rh-border shrink-0 flex flex-col">
+          <div className="px-5 py-4 border-b border-rh-border flex items-center gap-2 shrink-0">
+            <svg className="w-4 h-4 text-rh-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
             </svg>
-            <span className="text-sm font-semibold text-text-primary">交易</span>
+            <span className="text-sm font-semibold">交易</span>
             {selectedContract && (
-              <span className="text-[11px] text-text-muted ml-auto">
-                {symbol} {selectedContract.type === 'call' ? 'Call' : 'Put'} ${selectedContract.strike}
+              <span className="text-xs text-rh-text-secondary ml-auto">
+                {symbol} {selectedContract.type.toUpperCase()} ${selectedContract.strike}
               </span>
             )}
           </div>
-          <OrderPanel symbol={symbol} onPlaceOrder={handlePlaceOrder} selectedContract={selectedContract} />
+          <div className="flex-1 overflow-y-auto">
+            <OrderPanel symbol={symbol} onPlaceOrder={handlePlaceOrder} selectedContract={selectedContract} />
+          </div>
         </aside>
       </div>
     </div>
