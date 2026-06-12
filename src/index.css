@@ -1,44 +1,24 @@
 @import "tailwindcss";
 
-/* Robinhood-inspired theme */
+/* Dark Robinhood-inspired theme */
 @theme {
-  --color-rh-bg: #ffffff;
-  --color-rh-bg-alt: #f7f8fa;
-  --color-rh-bg-card: #ffffff;
-  --color-rh-border: #e0e3e7;
-  --color-rh-text: #1c1c1e;
-  --color-rh-text-secondary: #8b8b93;
-  --color-rh-text-muted: #aeaeb2;
-  --color-rh-green: #00c805;
-  --color-rh-green-bg: rgba(0, 200, 5, 0.08);
-  --color-rh-red: #ff3b30;
-  --color-rh-red-bg: rgba(255, 59, 48, 0.08);
-  --color-rh-blue: #007aff;
-  --color-rh-blue-bg: rgba(0, 122, 255, 0.08);
-  --color-rh-card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-
-  /* Dark mode */
-  --color-rh-dark-bg: #000000;
-  --color-rh-dark-bg-alt: #111111;
-  --color-rh-dark-card: #1c1c1e;
-  --color-rh-dark-border: #2c2c2e;
-  --color-rh-dark-text: #ffffff;
-  --color-rh-dark-text-secondary: #8b8b93;
-  --color-rh-dark-text-muted: #636366;
+  --color-rh-bg: #000000;
+  --color-rh-bg-alt: #0a0a0b;
+  --color-rh-card: #1c1c1e;
+  --color-rh-card-hover: #252527;
+  --color-rh-border: #2c2c2e;
+  --color-rh-border-light: #38383a;
+  --color-rh-text: #ffffff;
+  --color-rh-text-secondary: #98989d;
+  --color-rh-text-muted: #636366;
+  --color-rh-green: #30d158;
+  --color-rh-green-bg: rgba(48, 209, 88, 0.1);
+  --color-rh-red: #ff453a;
+  --color-rh-red-bg: rgba(255, 69, 58, 0.1);
+  --color-rh-blue: #0a84ff;
+  --color-rh-blue-bg: rgba(10, 132, 255, 0.1);
 }
 
-/* Light mode (default) */
-:root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f7f8fa;
-  --bg-card: #ffffff;
-  --border-color: #e0e3e7;
-  --text-primary: #1c1c1e;
-  --text-secondary: #8b8b93;
-  --text-muted: #aeaeb2;
-}
-
-/* System font stack */
 * {
   margin: 0;
   padding: 0;
@@ -46,9 +26,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Roboto, sans-serif;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background-color: var(--color-rh-bg);
+  color: var(--color-rh-text);
   overflow: hidden;
   height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -61,69 +41,16 @@ body {
   flex-direction: column;
 }
 
-/* Custom scrollbar - subtle */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #d1d1d6;
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #aeaeb2;
-}
+::-webkit-scrollbar { width: 0; height: 0; }
 
-/* Remove number input arrows */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-input[type="number"] {
-  -moz-appearance: textfield;
-}
+input[type="number"] { -moz-appearance: textfield; }
 
-/* Selection */
 ::selection {
-  background: var(--color-rh-green-bg);
-  color: var(--color-rh-green);
-}
-
-/* Smooth transitions */
-button, select, input {
-  transition: all 0.15s ease;
-}
-
-/* Card style */
-.card {
-  background: var(--bg-card);
-  border-radius: 12px;
-  box-shadow: var(--color-rh-card-shadow);
-  border: 1px solid var(--border-color);
-}
-
-/* Green/red pill badge */
-.pill-green {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  background: var(--color-rh-green-bg);
-  color: var(--color-rh-green);
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.pill-red {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  background: var(--color-rh-red-bg);
-  color: var(--color-rh-red);
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
+  background: var(--color-rh-blue-bg);
+  color: var(--color-rh-blue);
 }
